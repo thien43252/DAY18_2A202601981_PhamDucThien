@@ -10,6 +10,8 @@ import os
 import sys
 import subprocess
 
+import config  # noqa: F401 — import sớm để ép stdout sang UTF-8 (console Windows là cp1252)
+
 
 def check_file(path: str, required: bool = True) -> bool:
     if os.path.exists(path):
@@ -56,19 +58,21 @@ def run_tests() -> tuple[int, int]:
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=no", "-q"],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, timeout=600,
         )
         lines = result.stdout.strip().split("\n")
         summary = lines[-1] if lines else ""
-        # Parse "X passed, Y failed" or "X passed"
+        # Parse "X passed, Y failed" hoặc "==== X passed in 95.19s (0:01:35) ===="
+        # (pytest >= 8 in dòng tổng kết có viền "=" nên phải bỏ "=" trước khi ép int)
         passed = total = 0
-        for part in summary.split(","):
-            part = part.strip()
-            if "passed" in part:
-                passed = int(part.split()[0])
-                total += passed
-            if "failed" in part:
-                total += int(part.split()[0])
+        for part in summary.replace("=", " ").split(","):
+            tokens = part.split()
+            for i, token in enumerate(tokens):
+                if token in ("passed", "failed", "error", "errors") and i > 0 and tokens[i - 1].isdigit():
+                    count = int(tokens[i - 1])
+                    total += count
+                    if token == "passed":
+                        passed = count
         return passed, total
     except Exception as e:
         print(f"  ⚠️  pytest error: {e}")

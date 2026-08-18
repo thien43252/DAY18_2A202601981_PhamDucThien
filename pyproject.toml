@@ -1,0 +1,25 @@
+[project]
+name = "day18-2a202601981-phamducthien"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "datasets>=2.19",
+    "flashrank>=0.2",
+    "langchain-community>=0.2,<0.3",
+    "langchain-openai>=0.1,<0.2",
+    "openai>=1.30",
+    "pypdf>=4.0",
+    "python-dotenv>=1.0",
+    "qdrant-client>=1.9",
+    "ragas>=0.1.10,<0.2",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=3.0",
+    "underthesea>=6.8",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

@@ -1,9 +1,19 @@
 """Shared configuration for Lab 18."""
 
 import os
+import sys
+
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Console Windows mặc định dùng cp1252 → print emoji / tiếng Việt gây UnicodeEncodeError.
+# Ép stdout/stderr sang UTF-8 để pipeline chạy được trên Windows lẫn Linux.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
 
 # --- API Keys ---
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

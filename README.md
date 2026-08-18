@@ -1,8 +1,8 @@
 # Lab 18: Production RAG Pipeline
 
-**AICB-K34 · Ngày 18 · Production RAG**  
+**AICB-K34 · Ngày 18 · Production RAG**
 **Giảng viên:** Nguyễn Tiến Đồng · **Thời gian:** 2h implement + 30 phút reflection
-**Ref**: repo của giảng viên Trần Quang Thiện K2. 
+**Ref**: repo của giảng viên Trần Quang Thiện K2.
 
 ---
 
@@ -18,13 +18,14 @@ Xem **ASSIGNMENT.md** để biết chi tiết từng module và timeline.
 
 ## Prerequisites
 
-| Dependency | Bắt buộc? | Dùng cho |
-|-----------|-----------|----------|
-| Docker (Qdrant) | ✅ Có | M2 Dense Search |
-| Python 3.11+ | ✅ Có | Tất cả modules (RAGAS cần 3.11+ cho asyncio) |
-| `OPENAI_API_KEY` | ⚠️ M4+M5 | RAGAS eval (M4), Enrichment LLM (M5) |
+| Dependency         | Bắt buộc? | Dùng cho                                       |
+| ------------------ | ----------- | ----------------------------------------------- |
+| Docker (Qdrant)    | ✅ Có      | M2 Dense Search                                 |
+| Python 3.11+       | ✅ Có      | Tất cả modules (RAGAS cần 3.11+ cho asyncio) |
+| `OPENAI_API_KEY` | ⚠️ M4+M5  | RAGAS eval (M4), Enrichment LLM (M5)            |
 
 **Pre-download models** (tránh timeout trong lab):
+
 ```bash
 python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
@@ -107,9 +108,36 @@ lab18-production-rag/
 
 ## Timeline
 
-| Thời gian | Hoạt động |
-|-----------|-----------|
-| 0:00–0:10 | Setup + chạy `naive_baseline.py` |
-| 0:10–1:40 | Implement M1 → M2 → M3 → M4 → M5 |
-| 1:40–2:00 | Chạy pipeline + RAGAS + failure analysis |
+| Thời gian | Hoạt động                               |
+| ---------- | ------------------------------------------ |
+| 0:00–0:10 | Setup + chạy`naive_baseline.py`         |
+| 0:10–1:40 | Implement M1 → M2 → M3 → M4 → M5       |
+| 1:40–2:00 | Chạy pipeline + RAGAS + failure analysis  |
 | 2:00–2:30 | Reflection: lecture mapping + project plan |
+
+---
+
+## Kết quả bài nộp (Phạm Đức Thiên — 2A202601981)
+
+Chạy `python main.py` (naive baseline → production → so sánh), test set 20 câu, judge `gpt-4o-mini`:
+
+| Metric | Naive Baseline | Production | Δ |
+| ------------------- | -------------- | ---------- | ------- |
+| Faithfulness        | 0.8278         | **0.8685** | +0.0407 |
+| Answer Relevancy    | 0.7697         | **0.8485** | +0.0788 |
+| Context Precision   | 0.9250         | **0.9500** | +0.0250 |
+| Context Recall      | 0.9250         | **0.9500** | +0.0250 |
+
+**Latency / query:** hybrid search 112ms · rerank (20→3) 7411ms · LLM 1760ms · tổng 9603ms (p95 11391ms).
+**Build một lần:** enrichment 103 chunks 39.6s · indexing 43.2s · load reranker 6.6s.
+
+- `pytest tests/ -v` → **37/37 pass**, `grep -r "# TODO" src/m*.py` → **0**.
+- Báo cáo: [analysis/failure_analysis.md](analysis/failure_analysis.md) · [analysis/group_report.md](analysis/group_report.md) · [analysis/reflection_PhamDucThien.md](analysis/reflection_PhamDucThien.md)
+- Report JSON: `reports/ragas_report.json`, `reports/naive_baseline_report.json` (bản copy ở thư mục gốc để tiện chấm).
+
+### Ghi chú triển khai
+
+- **Chunking dùng trong pipeline:** hierarchical (parent 2048 / child 256) — search khớp ở child, context trả cho LLM là **parent** (`_expand_to_parents()`), kèm nhãn `[Nguồn: <file>]` để LLM phân biệt phiên bản tài liệu.
+- **Enrichment:** combined mode 1 API call/chunk (`_enrich_single_call`), chạy song song 8 luồng.
+- **Console Windows:** `config.py` ép stdout/stderr sang UTF-8 (cp1252 gây `UnicodeEncodeError` khi print emoji/tiếng Việt).
+- **Môi trường:** venv quản lý bằng `uv` (`uv sync`, `uv add --dev pytest`); Qdrant qua `docker compose up -d`.

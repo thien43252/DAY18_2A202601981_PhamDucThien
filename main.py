@@ -11,6 +11,8 @@ import json
 import os
 import time
 
+import config  # noqa: F401 — import sớm để ép stdout sang UTF-8 (console Windows là cp1252)
+
 
 def main():
     print("=" * 60)
